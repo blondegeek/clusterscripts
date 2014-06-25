@@ -1,1 +1,39 @@
-/global/home/users/tsmidt/.bash_profile
+# .bash_profile
+echo "
+                                               
+                            :                                 :       
+                          :                                   :       
+                          :  RRVIttIti+==iiii++iii++=;:,       :      
+                          : IBMMMMWWWWMMMMMBXXVVYYIi=;:,        :     
+                          : tBBMMMWWWMMMMMMBXXXVYIti;;;:,,      :     
+                          t YXIXBMMWMMBMBBRXVIi+==;::;::::       ,    
+                         ;t IVYt+=+iIIVMBYi=:,,,=i+=;:::::,      ;;   
+                         YX=YVIt+=,,:=VWBt;::::=,,:::;;;:;:     ;;;   
+                         VMiXRttItIVRBBWRi:.tXXVVYItiIi==;:   ;;;;    
+  -------------------    =XIBWMMMBBBMRMBXi;,tXXRRXXXVYYt+;;: ;;;;;    
+ /                   \    =iBWWMMBBMBBWBY;;;,YXRRRRXXVIi;;;:;,;;;=    
+|  WELCOME TO VULCAN  |    iXMMMMMWWBMWMY+;=+IXRRXXVYIi;:;;:,,;;=     
+|                     |    iBRBBMMMMYYXV+:,:;+XRXXVIt+;;:;++::;;;     
+ \                     \   =MRRRBMMBBYtt;::::;+VXVIi=;;;:;=+;;;;=     
+  ------------------ \  \   XBRBBBBBMMBRRVItttYYYYt=;;;;;;==:;=       
+                       \ \   VRRRRRBRRRRXRVYYIttiti=::;:::=;=         
+                         \\   YRRRRXXVIIYIiitt+++ii=:;:::;==          
+                              +XRRXIIIIYVVI;i+=;=tt=;::::;:;          
+                               tRRXXVYti++==;;;=iYt;:::::,;;          
+                                IXRRXVVVVYYItiitIIi=:::;,::;          
+                                 tVXRRRBBRXVYYYIti;::::,::::          
+                                  YVYVYYYYYItti+=:,,,,,:::::;         
+                                  YRVI+==;;;;;:,,,,,,,:::::::   
+                         
+"
+
+# Get the aliases and functions
+if [ -f ~/.bashrc ]; then
+	. ~/.bashrc
+fi
+
+# User specific environment and startup programs
+
+PATH=$PATH:$HOME/bin
+
+export PATH
