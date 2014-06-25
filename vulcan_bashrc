@@ -1,1 +1,32 @@
-/global/home/users/tsmidt/.bashrc
+# .bashrc
+
+#du -hs
+
+# Source global definitions
+if [ -f /etc/bashrc ]; then
+	. /etc/bashrc
+fi
+
+# User specific aliases and functions
+cd /clusterfs/vulcan/pscratch/tsmidt/
+
+export MODULEPATH=$MODULEPATH:/global/home/users/tsmidt/software/modfiles
+function curq()
+{
+squeue | grep tsmidt | awk '{ print $1 }' | xargs -n 1 sh ~/bashscripts/jerbquery.sh
+}
+alias vcp="sh ~/bashscripts/vcp.sh"
+alias jobs="squeue | grep tsmidt"
+alias submit="sh ~/bashscripts/submit.sh"
+alias subdep="sh ~/bashscripts/submitdepjid.sh"
+alias vaspclean="sh ~/bashscripts/clean.sh"
+alias cdpscratch="cd /clusterfs/vulcan/pscratch/tsmidt/"
+alias jerbquery="sh ~/bashscripts/jerbquery.sh"
+alias cdjerb=". ~/bashscripts/cdjerb.sh"
+alias fin="tail ~/jobfinished"
+alias fermi="grep fermi OUTCAR | tail -n 1"
+module load python/2.7.3
+module load numpy/1.6.1  
+module load scipy/0.10.0
+module load matplotlib/1.1.0
+module load pymatgen

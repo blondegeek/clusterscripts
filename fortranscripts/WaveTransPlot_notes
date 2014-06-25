@@ -1,0 +1,4 @@
+syntax: WaveTransPlot -f file -s spin -k k-point -b band -x coord -y coord
+defaults: -f WAVECAR -s 1 -k 1 -b 1 -x 0.0 -y 0.0
+inputs: x and y are direct coordinates on axes a1 and a2
+output: wavefunction psi(x,y,z) with z direct coordinate on a3 axis

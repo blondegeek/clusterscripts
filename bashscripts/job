@@ -1,0 +1,26 @@
+#!/bin/bash
+#SBATCH --job-name=LIO
+
+#SBATCH --partition=vulcan
+#SBATCH --account=vulcan
+#SBATCH --qos=normal
+
+#SBATCH --nodes=4
+#SBATCH --ntasks-per-node=8
+
+#SBATCH --time=48:00:00
+
+#SBATCH --error=job.err
+#SBATCH --output=job.out
+
+module load openmpi
+module load mkl
+module load fftw
+module load scalapack
+
+EXE="/global/home/users/tsmidt/vasp_LS/vasp.5.2/vasp"
+#NPROCS=`wc -l $SLURM_JOB_NODELIST | awk '{print $1}'`
+
+mpirun $EXE
+
+sh ~/bashscripts/finished.sh
