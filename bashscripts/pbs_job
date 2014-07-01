@@ -1,0 +1,11 @@
+#PBS -N V_oxide 
+#PBS -q debug 
+#PBS -A m387
+#PBS -l mppwidth=48
+#PBS -l walltime=00:30:00
+#PBS -V 
+#PBS -e job.err
+#PBS -o job.out
+
+cd $PBS_O_WORKDIR
+aprun -n 48 /global/u2/t/tsmidt/535.bin/vasp.535.hopper.nc
