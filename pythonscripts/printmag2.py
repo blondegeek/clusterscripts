@@ -19,6 +19,8 @@ magzlist = [z["tot"] for z in magz]
 strlist = []
 
 for i in range(0,len(magxlist)):
+# change this if loop to select only the magnetic species of interest
+# this example was used for a 48 atom unit cell where atoms 41-48 were magnetic
 	if i >= 40:
 		strlist.append(str(magxlist[i])+" "+str(magylist[i])+" "+str(magzlist[i]))
 
