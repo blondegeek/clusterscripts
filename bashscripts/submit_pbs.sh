@@ -1,4 +1,4 @@
-file=`ls *sjob | tail -n 1` 
+file=`ls *pjob | tail -n 1` 
 echo "$file"
 echo $(date) >> ~/joblog
 qsub $file >> ~/joblog
