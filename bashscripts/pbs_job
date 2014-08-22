@@ -1,11 +1,14 @@
-#PBS -N V_oxide 
-#PBS -q debug 
+#PBS -N lio 
+#PBS -q regular 
 #PBS -A m387
-#PBS -l mppwidth=48
-#PBS -l walltime=00:30:00
+#PBS -l mppwidth=96
+#PBS -l walltime=20:00:00
 #PBS -V 
 #PBS -e job.err
 #PBS -o job.out
 
 cd $PBS_O_WORKDIR
-aprun -n 48 /global/u2/t/tsmidt/535.bin/vasp.535.hopper.nc
+module load vasp
+aprun -n 96 vasp_ncl
+
+sh ~/bashscripts/finished_pbs.sh
