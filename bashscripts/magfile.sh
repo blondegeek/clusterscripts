@@ -1,2 +1,9 @@
-for i in 1 2 3 4 5 6; do cd ${i}sym0PBE; echo ${i}sym0PBE >> ../magfile; cp ~/pythonscripts/printmag2.py .; python printmag2.py >> ../magfile; tail -n 1 OSZICAR >> ../magfile ; cd ../; done
-
+#for folder in randbig randsmall ferrobig ferrosmall antimirrorabreaksmall antimirrorabreakbig
+for folder in randbig randsmall ferrosmall antimirrorabreakbig
+do
+	cd LIOH1/$folder/step1
+	cp ~/pythonscripts/printmag2.py .
+	echo $folder >> ../../../RESULTS/magfile_20140627.txt
+	python printmag2.py >> ../../../RESULTS/magfile_20140627.txt
+	cd ../../../
+done
