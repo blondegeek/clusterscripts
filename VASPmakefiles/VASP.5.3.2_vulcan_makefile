@@ -1,0 +1,187 @@
+.SUFFIXES: .inc .f .f90 .F
+#-----------------------------------------------------------------------
+# Makefile for Intel Fortran compiler for P4 systems
+#-----------------------------------------------------------------------
+
+# preprocessed fortran files will have the extension .f90
+SUFFIX=.f90
+
+# fortran compiler and linker
+FC=mpif90 
+FCL=$(FC)
+
+# preprocessing command for .F files
+CPP_=./preprocess < $*.F | /usr/bin/cpp -P -C -traditional > $*$(SUFFIX)
+
+#-----------------------------------------------------------------------
+# options for CPP in parallel version (see also above):
+# IFC                 work around some IFC bugs
+# PGF90               work around some PGF bugs
+# CACHE_SIZE          Cache size of CPU
+# avoidalloc          avoid ALLOCATE if possible
+# NGZhalf             charge density   reduced in Z direction
+# wNGZhalf            gamma point only reduced in Z direction
+# scaLAPACK           use scaLAPACK (usually slower on 100 Mbit Net)
+# RPROMU_DGEMV        use DGEMV instead of DGEMM in RPRO (usually faster)
+# RACCMU_DGEMV        use DGEMV instead of DGEMM in RACC (faster on P4)
+#-----------------------------------------------------------------------
+CPP=$(CPP_) -DMPI -DHOST=\"LinuxIFC\" -DIFC -DPGF90 \
+     -Dkind8 -DCACHE_SIZE=32000 -Davoidalloc -DNGZhalf \
+     -DMPI_BLOCK=8000
+
+#-----------------------------------------------------------------------
+# general fortran flags  (there must a trailing blank on this line)
+#-----------------------------------------------------------------------
+FFTW_INCLUDE=-I/global/software/sl-6.x86_64/modules/intel/2011.11.339/fftw/3.3.2-intel/include
+FFLAGS=-FR $(FFTW_INCLUDE)
+
+#-----------------------------------------------------------------------
+# optimization
+# we have tested whether higher optimisation improves performance
+# -xW   SSE2 optimization
+# -axW  SSE2 optimization,  but also generate code executable on all mach.
+# -tpp7 P4 optimization
+# -prefetch 
+#-----------------------------------------------------------------------
+OFLAG=-O3
+OFLAG_HIGH=$(OFLAG)
+OBJ_HIGH= 
+OBJ_NOOPT= 
+DEBUG=-FR -O0
+INLINE=$(OFLAG)
+
+#-----------------------------------------------------------------------
+# the following lines specify the position of BLAS  and LAPACK
+#-----------------------------------------------------------------------
+MKLPATH=/global/software/sl-6.x86_64/modules/langs/intel/2011.11.339/mkl/lib/intel64
+MKLINCLUDE=/global/software/sl-6.x86_64/modules/langs/intel/2011.11.339/mkl/include
+BLAS=-L$(MKLPATH) -I$(MKLINCLUDE) -lmkl_intel_lp64 -lmkl_sequential -lmkl_core
+LIB=-L../vasp.5.lib -ldmy ../vasp.5.lib/linpack_double.o $(BLAS)
+FFT3D=fftmpi.o fftmpi_map.o fft3dfurth.o fft3dlib.o \
+      /global/software/sl-6.x86_64/modules/intel/2011.11.339/fftw/3.3.2-intel/lib/libfftw3.a
+
+#-----------------------------------------------------------------------
+# general rules and compile lines
+#-----------------------------------------------------------------------
+BASIC=   symmetry.o symlib.o   lattlib.o  random.o   
+SOURCE=  base.o     mpi.o      smart_allocate.o      xml.o  \
+         constant.o jacobi.o   main_mpi.o  scala.o   \
+         asa.o      lattice.o  poscar.o   ini.o  mgrid.o  xclib.o  vdw_nl.o  xclib_grad.o \
+         radial.o   pseudo.o   gridq.o     ebs.o  \
+         mkpoints.o wave.o     wave_mpi.o  wave_high.o  spinsym.o \
+         $(BASIC)   nonl.o     nonlr.o    nonl_high.o dfast.o    choleski2.o \
+         mix.o      hamil.o    xcgrad.o   xcspin.o    potex1.o   potex2.o  \
+         constrmag.o cl_shift.o relativistic.o LDApU.o \
+         paw_base.o metagga.o  egrad.o    pawsym.o   pawfock.o  pawlhf.o   rhfatm.o  hyperfine.o paw.o   \
+         mkpoints_full.o       charge.o   Lebedev-Laikov.o  stockholder.o dipol.o    pot.o \
+         dos.o      elf.o      tet.o      tetweight.o hamil_rot.o \
+         chain.o    dyna.o     k-proj.o    sphpro.o    us.o  core_rel.o \
+         aedens.o   wavpre.o   wavpre_noio.o broyden.o \
+         dynbr.o    hamil_high.o  rmm-diis.o reader.o   writer.o   tutor.o xml_writer.o \
+         brent.o    stufak.o   fileio.o   opergrid.o stepver.o  \
+         chgloc.o   fast_aug.o fock_multipole.o  fock.o  mkpoints_change.o sym_grad.o \
+         mymath.o   internals.o dynconstr.o dimer_heyden.o dvvtrajectory.o vdwforcefield.o \
+         nmr.o      pead.o     subrot.o   subrot_scf.o \
+         force.o    pwlhf.o    gw_model.o optreal.o  steep.o    davidson.o  david_inner.o \
+         electron.o rot.o  electron_all.o shm.o    pardens.o  paircorrection.o \
+         optics.o   constr_cell_relax.o   stm.o    finite_diff.o elpol.o    \
+         hamil_lr.o rmm-diis_lr.o  subrot_cluster.o subrot_lr.o \
+         lr_helper.o hamil_lrf.o   elinear_response.o ilinear_response.o \
+         linear_optics.o \
+         setlocalpp.o  wannier.o electron_OEP.o electron_lhf.o twoelectron4o.o \
+         mlwf.o     ratpol.o screened_2e.o wave_cacher.o chi_base.o wpot.o \
+         local_field.o ump2.o  bse_te.o bse.o acfdt.o chi.o sydmat.o dmft.o \
+         rmm-diis_mlr.o  linear_response_NMR.o wannier_interpol.o linear_response.o
+vasp: $(SOURCE) $(FFT3D) $(INC) main.o 
+	rm -f vasp
+	$(FCL) -o vasp main.o $(SOURCE) $(FFT3D) $(LIB) $(LINK)
+makeparam: $(SOURCE) $(FFT3D) makeparam.o main.F $(INC)
+	$(FCL) -o makeparam $(LINK) makeparam.o $(SOURCE) $(FFT3D) $(LIB)
+zgemmtest: zgemmtest.o base.o random.o $(INC)
+	$(FCL) -o zgemmtest $(LINK) zgemmtest.o random.o base.o $(LIB)
+dgemmtest: dgemmtest.o base.o random.o $(INC)
+	$(FCL) -o dgemmtest $(LINK) dgemmtest.o random.o base.o $(LIB) 
+ffttest: base.o smart_allocate.o mpi.o mgrid.o random.o ffttest.o $(FFT3D) $(INC)
+	$(FCL) -o ffttest $(LINK) ffttest.o mpi.o mgrid.o random.o smart_allocate.o base.o $(FFT3D) $(LIB)
+kpoints: $(SOURCE) $(FFT3D) makekpoints.o main.F $(INC)
+	$(FCL) -o kpoints $(LINK) makekpoints.o $(SOURCE) $(FFT3D) $(LIB)
+clean:	
+	-rm -f *.g *.f *.o *.L *.mod ; touch *.F
+main.o: main$(SUFFIX)
+	$(FC) $(FFLAGS)$(DEBUG)  $(INCS) -c main$(SUFFIX)
+xcgrad.o: xcgrad$(SUFFIX)
+	$(FC) $(FFLAGS) $(INLINE)  $(INCS) -c xcgrad$(SUFFIX)
+xcspin.o: xcspin$(SUFFIX)
+	$(FC) $(FFLAGS) $(INLINE)  $(INCS) -c xcspin$(SUFFIX)
+makeparam.o: makeparam$(SUFFIX)
+	$(FC) $(FFLAGS)$(DEBUG)  $(INCS) -c makeparam$(SUFFIX)
+makeparam$(SUFFIX): makeparam.F main.F 
+#
+# MIND: I do not have a full dependency list for the include
+# and MODULES: here are only the minimal basic dependencies
+# if one strucuture is changed then touch_dep must be called
+# with the corresponding name of the structure
+#
+base.o: base.inc base.F
+mgrid.o: mgrid.inc mgrid.F
+constant.o: constant.inc constant.F
+lattice.o: lattice.inc lattice.F
+setex.o: setexm.inc setex.F
+pseudo.o: pseudo.inc pseudo.F
+mkpoints.o: mkpoints.inc mkpoints.F
+wave.o: wave.F
+nonl.o: nonl.inc nonl.F
+nonlr.o: nonlr.inc nonlr.F
+$(OBJ_HIGH):
+	$(CPP)
+	$(FC) $(FFLAGS) $(OFLAG_HIGH) $(INCS) -c $*$(SUFFIX)
+$(OBJ_NOOPT):
+	$(CPP)
+	$(FC) $(FFLAGS) $(INCS) -c $*$(SUFFIX)
+fft3dlib_f77.o: fft3dlib_f77.F
+	$(CPP)
+	$(F77) $(FFLAGS_F77) -c $*$(SUFFIX)
+.F.o:
+	$(CPP)
+	$(FC) $(FFLAGS) $(OFLAG) $(INCS) -c $*$(SUFFIX)
+.F$(SUFFIX):
+	$(CPP)
+$(SUFFIX).o:
+	$(FC) $(FFLAGS) $(OFLAG) $(INCS) -c $*$(SUFFIX)
+#-----------------------------------------------------------------------
+# special rules
+# these special rules have been tested for ifc.11 and ifc.12 only
+fft3dlib.o : fft3dlib.F
+	$(CPP)
+	$(FC) -FR -O2 -c $*$(SUFFIX)
+fft3dfurth.o : fft3dfurth.F
+	$(CPP)
+	$(FC) -FR -O1 -c $*$(SUFFIX)
+fftw3d.o : fftw3d.F
+	$(CPP)
+	$(FC) -FR -O1 -c $*$(SUFFIX)
+fftmpi.o : fftmpi.F
+	$(CPP)
+	$(FC) -FR -O1 -c $*$(SUFFIX)
+fftmpiw.o : fftmpiw.F
+	$(CPP)
+	$(FC) -FR -O1 $(INCS) -c $*$(SUFFIX)
+wave_high.o : wave_high.F
+	$(CPP)
+	$(FC) -FR -O1 -c $*$(SUFFIX)
+# the following rules are probably no longer required (-O3 seems to work)
+wave.o : wave.F
+	$(CPP)
+	$(FC) -FR -O2 -c $*$(SUFFIX)
+paw.o : paw.F
+	$(CPP)
+	$(FC) -FR -O2 -c $*$(SUFFIX)
+cl_shift.o : cl_shift.F
+	$(CPP)
+	$(FC) -FR -O2 -c $*$(SUFFIX)
+us.o : us.F
+	$(CPP)
+	$(FC) -FR -O2 -c $*$(SUFFIX)
+LDApU.o : LDApU.F
+	$(CPP)
+	$(FC) -FR -O2 -c $*$(SUFFIX)
