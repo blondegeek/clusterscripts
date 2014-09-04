@@ -1,0 +1,411 @@
+.SUFFIXES: .inc .f .f90 .F
+#-----------------------------------------------------------------------
+# Makefile for Intel Fortran compiler for P4 systems
+#
+# The makefile was tested only under Linux on Intel platforms
+# (Suse 5.3, libc 6 <-> glibc 2.X)
+#
+# it might be required to change some of library pathes, since
+# LINUX installation vary a lot
+# Hence check ***ALL**** options in this makefile very carefully
+#-----------------------------------------------------------------------
+#
+# Mind that some Linux distributions (Suse 6.1) have a bug in 
+# libm causing small errors in the error-function (total energy
+# is therefore wrong by about 1meV/atom). The recommended
+# solution is to update libc.
+#
+# BLAS must be installed on the machine
+# there are several options:
+# 1) very slow but works:
+#   retrieve the lapackage from ftp.netlib.org
+#   and compile the blas routines (BLAS/SRC directory)
+#   please use g77 or f77 for the compilation. When I tried to
+#   use pgf77 or pgf90 for BLAS, VASP hang up when calling
+#   ZHEEV  (however this was with lapack 1.1 now I use lapack 2.0)
+# 2) most desirable: get an optimized BLAS 
+#   for a list of optimized BLAS try
+#     http://www.kachinatech.com/~hjjou/scilib/opt_blas.html
+#
+# the two most reliable packages around are presently:
+# 3a) Intels own optimised BLAS (PIII, P4, Itanium)
+#     http://developer.intel.com/software/products/mkl/
+#   this is really excellent when you use Intel CPU's
+#
+# 3b) or obtain the atlas based BLAS routines
+#     http://math-atlas.sourceforge.net/
+#   you certainly need atlas on the Athlon, since the  mkl
+#   routines are not optimal on the Athlon.
+#   If you want to use atlas based BLAS, check the lines around LIB=
+#
+# 3c) brand new and mindblowing fast SSE  (4 GFlops on P4, 2.53 GHz)
+#   Kazushige Goto's BLAS
+#   http://www.cs.utexas.edu/users/kgoto/signup_first.html
+# 
+#
+#-----------------------------------------------------------------------
+
+# all CPP processed fortran files have the extension .f 
+SUFFIX=.f90
+
+#-----------------------------------------------------------------------
+# fortran compiler and linker
+#-----------------------------------------------------------------------
+FC=ifort 
+# fortran linker
+FCL=$(FC)
+
+
+#-----------------------------------------------------------------------
+# whereis CPP ?? (I need CPP, can't use gcc with proper options)
+# that's the location of gcc for SUSE 5.3
+#
+#  CPP_   =  /usr/lib/gcc-lib/i486-linux/2.7.2/cpp -P -C 
+#
+# that's probably the right line for some Red Hat distribution:
+#
+#  CPP_   =  /usr/lib/gcc-lib/i386-redhat-linux/2.7.2.3/cpp -P -C
+#
+#  SUSE X.X, maybe some Red Hat distributions:
+
+CPP_ =  ./preprocess <$*.F | /usr/bin/cpp -P -C -traditional >$*$(SUFFIX)
+
+#-----------------------------------------------------------------------
+# possible options for CPP:
+# NGXhalf             charge density   reduced in X direction
+# wNGXhalf            gamma point only reduced in X direction
+# avoidalloc          avoid ALLOCATE if possible
+# IFC                 work around some IFC bugs
+# CACHE_SIZE          1000 for PII,PIII, 5000 for Athlon, 8000-12000 P4
+# RPROMU_DGEMV        use DGEMV instead of DGEMM in RPRO (usually  faster)
+# RACCMU_DGEMV        use DGEMV instead of DGEMM in RACC (faster on P4)
+#-----------------------------------------------------------------------
+
+#CPP     = $(CPP_)  -DHOST=\"LinuxIFC\" \
+#          -Dkind8 -DNGXhalf -DCACHE_SIZE=12000 -DPGF90 -Davoidalloc \
+#          -DRPROMU_DGEMV  -DRACCMU_DGEMV
+
+#-----------------------------------------------------------------------
+# general fortran flags  (there must a trailing blank on this line)
+#-----------------------------------------------------------------------
+
+#FFLAGS =  -FR  
+FFTW_INCLUDE=-I/global/software/sl-6.x86_64/modules/intel/2011.11.339/fftw/3.3.2-intel/include
+FFLAGS =  -heap-arrays -FR -lowercase -assume byterecl $(FFTW_INCLUDE)
+
+#-----------------------------------------------------------------------
+# optimization
+# we have tested whether higher optimisation improves performance
+# -xW   SSE2 optimization
+# -axW  SSE2 optimization,  but also generate code executable on all mach.
+# -tpp7 P4 optimization
+# -prefetch 
+#-----------------------------------------------------------------------
+
+OFLAG=-O3
+#OFLAG= -O3 -ipo -parallel
+
+OFLAG_HIGH = $(OFLAG)
+OBJ_HIGH = 
+OBJ_NOOPT = 
+DEBUG  = -FR -O0
+INLINE = $(OFLAG)
+
+
+#-----------------------------------------------------------------------
+# the following lines specify the position of BLAS  and LAPACK
+# on P4, VASP works fastest with Intels mkl performance library
+# so that's what I recommend
+#-----------------------------------------------------------------------
+
+# Atlas based libraries
+#ATLASHOME= $(HOME)/archives/BLAS_OPT/ATLAS/lib/Linux_P4SSE2/
+#BLAS=   -L$(ATLASHOME)  -lf77blas -latlas
+
+# use specific libraries (default library path points to other libraries)
+#BLAS= $(ATLASHOME)/libf77blas.a $(ATLASHOME)/libatlas.a 
+MKLPATH=/global/software/sl-6.x86_64/modules/langs/intel/2011.11.339/mkl/lib/intel64
+MKLINCLUDE=/global/software/sl-6.x86_64/modules/langs/intel/2011.11.339/mkl/include
+BLAS=  -L$(MKLPATH) -I$(MKLINCLUDE) -lmkl_intel_lp64  -lmkl_sequential -lmkl_core
+
+# use the mkl Intel libraries for p4 (www.intel.com)
+# mkl.5.1
+# set -DRPROMU_DGEMV  -DRACCMU_DGEMV in the CPP lines
+#BLAS=-L/opt/intel/mkl/lib/32 -lmkl_p4  -lpthread
+
+# mkl.5.2 requires also to -lguide library
+# set -DRPROMU_DGEMV  -DRACCMU_DGEMV in the CPP lines
+#BLAS=-L/opt/intel/mkl/lib/32 -lmkl_p4 -lguide -lpthread
+
+# even faster Kazushige Goto's BLAS
+# http://www.cs.utexas.edu/users/kgoto/signup_first.html
+#BLAS=  /opt/libs/libgoto/libgoto_p4_512-r0.6.so
+
+# LAPACK, simplest use vasp.4.lib/lapack_double
+#LAPACK= ../vasp.4.lib/lapack_double.o
+
+# use atlas optimized part of lapack 
+#LAPACK= ../vasp.4.lib/lapack_atlas.o  -llapack -lcblas
+
+# use the mkl Intel lapack
+#LAPACK= -L/global/software/x86_64/intel/mkl/9.0/lib/em64t -lmkl_lapack -lmkl_em64t -lguide -lmkl_solver 
+#LAPACK= -L/global/software/centos-5.x86_64/modules/mkl/10.0.4.023/lib/em64t/ -lmkl_em64t -lguide  -lpthread -lmkl_solver
+#LAPACK= -L$(MKLPATH) -I$(MKLINCLUDE) -lmkl_lapack -lmkl_core
+#LAPACK= $(MKLPATH)/libmkl_lapack.a
+
+#LAPACK=  ./lapack_LINUX.a  ./blas_LINUX.a
+
+#-----------------------------------------------------------------------
+
+LIB     = -L../vasp.5.lib -ldmy  \
+     ../vasp.5.lib/linpack_double.o $(LAPACK) \
+     $(BLAS)
+
+# options for linking (for compiler version 6.X) nothing is required
+#LINK    = 
+# compiler version 7.0 generates some vector statments which are located
+# in the svml library, add the LIBPATH and the library (just in case)
+#LINK    =  -L/opt/intel/compiler70/ia32/lib/ -lsvml 
+
+#-----------------------------------------------------------------------
+# fft libraries:
+# VASP.4.6 can use fftw.30 (http://www.fftw.org)
+# since this version is faster on P4 machines, we recommend to use it
+#-----------------------------------------------------------------------
+
+#FFT3D   = fft3dfurth.o fft3dlib.o
+#FFT3D   = fftw3d.o fft3dlib.o   /opt/libs/fftw-3.0/lib/libfftw3.a
+
+
+#=======================================================================
+# MPI section, uncomment the following lines
+# 
+# one comment for users of mpich or lam:
+# You must *not* compile mpi with g77/f77, because f77/g77             
+# appends *two* underscores to symbols that contain already an        
+# underscore (i.e. MPI_SEND becomes mpi_send__).  The pgf90
+# compiler however appends only one underscore.
+# Precompiled mpi version will also not work !!!
+#
+# We found that mpich.1.2.1 and lam-6.5.X are stable
+# mpich.1.2.1 was configured with 
+#  ./configure -prefix=/usr/local/mpich_nodvdbg -fc="pgf77 -Mx,119,0x200000"  \
+# -f90="pgf90 -Mx,119,0x200000" \
+# --without-romio --without-mpe -opt=-O \
+# 
+# lam was configured with the line
+#  ./configure  -prefix /usr/local/lam-6.5.X --with-cflags=-O -with-fc=pgf90 \
+# --with-f77flags=-O --without-romio
+# 
+# lam was generally faster and we found an average communication
+# band with of roughly 160 MBit/s (full duplex)
+#
+# please note that you might be able to use a lam or mpich version 
+# compiled with f77/g77, but then you need to add the following
+# options: -Msecond_underscore (compilation) and -g77libs (linking)
+#
+# !!! Please do not send me any queries on how to install MPI, I will
+# certainly not answer them !!!!
+#=======================================================================
+#-----------------------------------------------------------------------
+# fortran linker for mpi: if you use LAM and compiled it with the options
+# suggested above,  you can use the following line
+#-----------------------------------------------------------------------
+
+FC=mpif90 
+FCL=$(FC)
+
+#-----------------------------------------------------------------------
+# additional options for CPP in parallel version (see also above):
+# NGZhalf               charge density   reduced in Z direction
+# wNGZhalf              gamma point only reduced in Z direction
+# scaLAPACK             use scaLAPACK (usually slower on 100 Mbit Net)
+#-----------------------------------------------------------------------
+
+CPP    = $(CPP_) -DMPI  -DHOST=\"LinuxIFC\" -DIFC \
+     -Dkind8 -DCACHE_SIZE=4000 -DPGF90 -Davoidalloc -DNGZhalf \
+     -DMPI_BLOCK=8000
+
+
+#-----------------------------------------------------------------------
+# location of SCALAPACK
+# if you do not use SCALAPACK simply uncomment the line SCA
+#-----------------------------------------------------------------------
+
+
+SCA=
+
+#-----------------------------------------------------------------------
+# libraries for mpi
+#-----------------------------------------------------------------------
+
+#LIB     = -L../vasp.4.lib -ldmy  \
+#	../vasp.4.lib/linpack_double.o  ../vasp.4.lib/lapack_double.o  ./blas_LINUX.a  
+
+# FFT: fftmpi.o with fft3dlib of Juergen Furthmueller
+#FFT3D   = fftmpi.o fftmpi_map.o fft3dlib.o 
+
+# fftw.3.0 is slighly faster and should be used if available
+#FFT3D   = fftmpiw.o fftmpi_map.o fft3dlib.o -L/home/zayak/Codes/fftw-3.1.2/lib -lfftw3
+FFT3D   = fftmpi.o fftmpi_map.o fft3dfurth.o fft3dlib.o \
+          /global/software/sl-6.x86_64/modules/intel/2011.11.339/fftw/3.3.2-intel/lib/libfftw3.a
+#-----------------------------------------------------------------------
+# general rules and compile lines
+#-----------------------------------------------------------------------
+BASIC=   symmetry.o symlib.o   lattlib.o  random.o   
+
+SOURCE=  base.o     mpi.o      smart_allocate.o      xml.o  \
+         constant.o jacobi.o   main_mpi.o  scala.o   \
+         asa.o      lattice.o  poscar.o   ini.o  mgrid.o  xclib.o  vdw_nl.o  xclib_grad.o \
+         radial.o   pseudo.o   gridq.o     ebs.o  \
+         mkpoints.o wave.o     wave_mpi.o  wave_high.o  \
+         $(BASIC)   nonl.o     nonlr.o    nonl_high.o dfast.o    choleski2.o \
+         mix.o      hamil.o    xcgrad.o   xcspin.o    potex1.o   potex2.o  \
+         constrmag.o cl_shift.o relativistic.o LDApU.o \
+         paw_base.o metagga.o  egrad.o    pawsym.o   pawfock.o  pawlhf.o   rhfatm.o  paw.o   \
+         mkpoints_full.o       charge.o   Lebedev-Laikov.o  stockholder.o dipol.o    pot.o \
+         dos.o      elf.o      tet.o      tetweight.o hamil_rot.o \
+         steep.o    chain.o    dyna.o     sphpro.o    us.o  core_rel.o \
+         aedens.o   wavpre.o   wavpre_noio.o broyden.o \
+         dynbr.o    rmm-diis.o reader.o   writer.o   tutor.o xml_writer.o \
+         brent.o    stufak.o   fileio.o   opergrid.o stepver.o  \
+         chgloc.o   fast_aug.o fock.o     mkpoints_change.o sym_grad.o \
+         mymath.o   internals.o dynconstr.o dimer_heyden.o dvvtrajectory.o vdwforcefield.o \
+         hamil_high.o nmr.o    pead.o     mlwf.o     subrot.o   subrot_scf.o \
+         force.o    pwlhf.o  gw_model.o optreal.o   davidson.o  david_inner.o \
+         electron.o rot.o  electron_all.o shm.o    pardens.o  paircorrection.o \
+         optics.o   constr_cell_relax.o   stm.o    finite_diff.o elpol.o    \
+         hamil_lr.o rmm-diis_lr.o  subrot_cluster.o subrot_lr.o \
+         lr_helper.o hamil_lrf.o   elinear_response.o ilinear_response.o \
+         linear_optics.o linear_response.o   \
+         setlocalpp.o  wannier.o electron_OEP.o electron_lhf.o twoelectron4o.o \
+         ratpol.o screened_2e.o wave_cacher.o chi_base.o wpot.o local_field.o \
+         ump2.o bse_te.o bse.o acfdt.o chi.o sydmat.o dmft.o \
+         rmm-diis_mlr.o  linear_response_NMR.o
+
+
+INC=
+
+vasp: $(SOURCE) $(FFT3D) $(INC) main.o
+	rm -f vasp
+	$(FCL) -o vasp main.o  $(SOURCE)   $(FFT3D) $(LIB) $(LINK)
+makeparam: $(SOURCE) $(FFT3D) makeparam.o main.F $(INC)
+	$(FCL) -o makeparam  $(LINK) makeparam.o $(SOURCE) $(FFT3D) $(LIB)
+zgemmtest: zgemmtest.o base.o random.o $(INC)
+	$(FCL) -o zgemmtest $(LINK) zgemmtest.o random.o base.o $(LIB)
+dgemmtest: dgemmtest.o base.o random.o $(INC)
+	$(FCL) -o dgemmtest $(LINK) dgemmtest.o random.o base.o $(LIB) 
+ffttest: base.o smart_allocate.o mpi.o mgrid.o random.o ffttest.o $(FFT3D) $(INC)
+	$(FCL) -o ffttest $(LINK) ffttest.o mpi.o mgrid.o random.o smart_allocate.o base.o $(FFT3D) $(LIB)
+kpoints: $(SOURCE) $(FFT3D) makekpoints.o main.F $(INC)
+	$(FCL) -o kpoints $(LINK) makekpoints.o $(SOURCE) $(FFT3D) $(LIB)
+
+clean:	
+	-rm -f *.g *.f *.o *.L *.mod ; touch *.F
+
+main.o: main$(SUFFIX)
+	$(FC) $(FFLAGS)$(DEBUG)  $(INCS) -c main$(SUFFIX)
+xcgrad.o: xcgrad$(SUFFIX)
+	$(FC) $(FFLAGS) $(INLINE)  $(INCS) -c xcgrad$(SUFFIX)
+xcspin.o: xcspin$(SUFFIX)
+	$(FC) $(FFLAGS) $(INLINE)  $(INCS) -c xcspin$(SUFFIX)
+
+makeparam.o: makeparam$(SUFFIX)
+	$(FC) $(FFLAGS)$(DEBUG)  $(INCS) -c makeparam$(SUFFIX)
+
+makeparam$(SUFFIX): makeparam.F main.F 
+#
+# MIND: I do not have a full dependency list for the include
+# and MODULES: here are only the minimal basic dependencies
+# if one strucuture is changed then touch_dep must be called
+# with the corresponding name of the structure
+#
+base.o: base.inc base.F
+mgrid.o: mgrid.inc mgrid.F
+constant.o: constant.inc constant.F
+lattice.o: lattice.inc lattice.F
+setex.o: setexm.inc setex.F
+pseudo.o: pseudo.inc pseudo.F
+poscar.o: poscar.inc poscar.F
+mkpoints.o: mkpoints.inc mkpoints.F
+wave.o: wave.F
+nonl.o: nonl.inc nonl.F
+nonlr.o: nonlr.inc nonlr.F
+
+$(OBJ_HIGH):
+	$(CPP)
+	$(FC) $(FFLAGS) $(OFLAG_HIGH) $(INCS) -c $*$(SUFFIX)
+$(OBJ_NOOPT):
+	$(CPP)
+	$(FC) $(FFLAGS) $(INCS) -c $*$(SUFFIX)
+
+fft3dlib_f77.o: fft3dlib_f77.F
+	$(CPP)
+	$(F77) $(FFLAGS_F77) -c $*$(SUFFIX)
+
+.F.o:
+	$(CPP)
+	$(FC) $(FFLAGS) $(OFLAG) $(INCS) -c $*$(SUFFIX)
+.F$(SUFFIX):
+	$(CPP)
+$(SUFFIX).o:
+	$(FC) $(FFLAGS) $(OFLAG) $(INCS) -c $*$(SUFFIX)
+
+# special rules
+#-----------------------------------------------------------------------
+
+# -tpp5|6|7 P, PII-PIII, PIV
+# -xW use SIMD (does not pay of on PII, since fft3d uses double prec)
+# all other options do no affect the code performance since -O1 is used
+
+fft3dlib.o : fft3dlib.F
+	$(CPP)
+	$(FC) -FR -lowercase -O2 -c $*$(SUFFIX)
+fft3dfurth.o : fft3dfurth.F
+	$(CPP)
+	$(FC) -FR -lowercase -O1 -c $*$(SUFFIX)
+fftw3d.o : fftw3d.F
+	$(CPP)
+	$(FC) -FR -lowercase -O1 -c $*$(SUFFIX)
+wave_high.o : wave_high.F
+	$(CPP)
+	$(FC) -FR -lowercase -O1 -c $*$(SUFFIX)
+radial.o : radial.F
+	$(CPP)
+	$(FC) -FR -lowercase -O1 -c $*$(SUFFIX)
+
+symlib.o : symlib.F
+	$(CPP)
+	$(FC) -FR -lowercase -O1 -c $*$(SUFFIX)
+
+symmetry.o : symmetry.F
+	$(CPP)
+	$(FC) -FR -lowercase -O1 -c $*$(SUFFIX)
+
+wave_mpi.o : wave_mpi.F
+	$(CPP)
+	$(FC) -FR -lowercase -O1 -c $*$(SUFFIX)
+
+wave.o : wave.F
+	$(CPP)
+	$(FC) -FR -lowercase -O1 -c $*$(SUFFIX)
+
+dynbr.o : dynbr.F
+	$(CPP)
+	$(FC) -FR -lowercase -O1 -c $*$(SUFFIX)
+
+asa.o : asa.F
+	$(CPP)
+	$(FC) -FR -lowercase -O1 -c $*$(SUFFIX)
+
+broyden.o : broyden.F
+	$(CPP)
+	$(FC) -FR -lowercase -O2 -c $*$(SUFFIX)
+
+us.o : us.F
+	$(CPP)
+	$(FC) -FR -lowercase -O1 -c $*$(SUFFIX)
+
+LDApU.o : LDApU.F
+	$(CPP)
+	$(FC) -FR -lowercase -O2 -c $*$(SUFFIX)
