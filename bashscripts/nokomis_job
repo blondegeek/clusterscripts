@@ -1,0 +1,26 @@
+#!/bin/bash
+#SBATCH --job-name=LIO
+
+#SBATCH --partition=lr3
+#SBATCH --account=lr_nokomis
+#SBATCH --qos=condo_nokomis
+
+#SBATCH --nodes=5
+#SBATCH --ntasks-per-node=8
+
+#SBATCH --time=48:00:00
+
+#SBATCH --error=job.err
+#SBATCH --output=job.out
+
+module load openmpi
+module load mkl
+module load fftw
+module load scalapack
+
+#EXE="/global/home/groups-sw/nano/neatongroup/vasp.5.3.5/executables/vasp_ncl"
+EXE="/global/home/groups-sw/nano/neatongroup/vasp.5.3.2/executables/vasp_ncl"
+
+mpirun $EXE
+
+sh ~/bashscripts/finished.sh
