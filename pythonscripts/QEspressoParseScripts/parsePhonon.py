@@ -1,9 +1,13 @@
 import numpy as np
 
 data = []
+# current q vector
 curQ = None
+# current frequency
 curF = None
+# current q vector frequency array
 freqArray = []
+# current frequency displacement array
 disArray = []
 
 with open("phonons.txt") as Textfile:
@@ -11,6 +15,7 @@ with open("phonons.txt") as Textfile:
         line = line.split()
         trigger =  line[0] 
         if trigger == "q":
+# stuff last q vector info into data
             if curQ != None:
                 freqArray.append([curF, disArray])
                 data.append([curQ, freqArray])
@@ -19,11 +24,13 @@ with open("phonons.txt") as Textfile:
                 disArray = []
             curQ = map( float, line[2:])
         elif trigger == "freq":
+# stuff freq and displacement vector into freq array
             if curF != None:
                 freqArray.append([float(curF), disArray])
                 disArray = []
             curF = float(line[4])
         elif trigger == "(":
+# stuff displacement coefficients to disArray
             disArray.append( map( float, line[2::2]))
 # Catch the last bits of data
 freqArray.append([curF, disArray])
