@@ -1,5 +1,3 @@
-import numpy as np
-
 data = []
 # current q vector
 curQ = None
