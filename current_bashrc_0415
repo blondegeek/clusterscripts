@@ -1,0 +1,55 @@
+# .bashrc
+
+#du -hs
+
+# Source global definitions
+if [ -f /etc/bashrc ]; then
+	. /etc/bashrc
+fi
+
+# User specific aliases and functions
+source ENV/bin/activate
+cd $SCRATCH
+
+export MODULEPATH=$MODULEPATH:/global/home/users/tsmidt/software/modfiles
+function curq()
+{
+squeue | grep tsmidt | awk '{ print $1 }' | xargs -n 1 sh ~/bashscripts/jerbquery.sh
+}
+alias vcp="sh ~/bashscripts/vcp.sh"
+alias jobs="squeue | grep tsmidt"
+alias submit="sh ~/bashscripts/submit.sh"
+alias submitFORCE="sh ~/bashscripts/submitFORCE.sh"
+alias subdep="sh ~/bashscripts/submitdepjid.sh"
+alias vaspclean="sh ~/bashscripts/clean.sh"
+alias saveStep="sh ~/bashscripts/saveStep.sh"
+alias cdpscratch="cd /clusterfs/vulcan/pscratch/tsmidt/"
+alias jerbquery="sh ~/bashscripts/jerbquery.sh"
+alias cdjerb=". ~/bashscripts/cdjerb.sh"
+alias fin="tail ~/jobfinished"
+alias fermi="grep fermi OUTCAR | tail -n 1"
+alias occur="sh ~/bashscripts/occur.sh"
+
+module load python/2.7.3
+module load numpy
+module load scipy/0.10.0
+module load matplotlib/1.1.0
+module load virtualenv
+module load scalapack
+module load mkl
+module load openmpi
+
+module load pymatgen
+
+export PYTHONPATH=$PYTHONPATH:/global/home/users/tsmidt/ENV/lib/python2.7/site-packages
+export PREFIX_PATH=/global/home/users/tsmidt/ENV
+
+#------------------------------------------------------------------------
+# this is for XCRYSDEN 1.5.60; added by XCRYSDEN installation on
+# Tue Sep 23 16:39:21 PDT 2014
+#------------------------------------------------------------------------
+XCRYSDEN_TOPDIR=/global/home/users/tsmidt/xcrysden-1.5.60
+XCRYSDEN_SCRATCH=/global/home/users/tsmidt/xcrys_tmp
+export XCRYSDEN_TOPDIR XCRYSDEN_SCRATCH
+PATH="$XCRYSDEN_TOPDIR:$PATH:$XCRYSDEN_TOPDIR/scripts:$XCRYSDEN_TOPDIR/util"
+
