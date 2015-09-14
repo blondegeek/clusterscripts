@@ -77,6 +77,18 @@ print "---------"
 
 
 def getDistinctLengths(listOne,listTwo,length,tolerance,s,atomNumber,equiv):
+	'''
+	s is the pymatgen structure object
+	atomNumber is the list of unique wyckoff atoms by species and number (EX: Ir1)
+	equiv is an array with equivalent wyckoff positions (basically atomNumber is the pretty version of equiv).
+
+	listOne is a list of starting atoms
+	listTwo is a list of ending atoms
+
+	length is in angstroms
+	tolerance is in angstroms
+	(so for Ir-Ir bond lengths one might specify a length of 3.0 with a tolerance of 0.5)
+	'''
 	equivcounter=-1
 	distances=list()
 	for i in listOne:
